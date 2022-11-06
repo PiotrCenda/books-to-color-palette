@@ -4,19 +4,21 @@ from PyPDF2 import PdfFileReader
 
 
 def extract_text_from_pdf(path: str):
-    print(path)
     
-    with open(path, 'r', encoding="utf8", errors="ignore") as file:
+    with open(path, 'rb') as file:
         pdf = PdfFileReader(file)
-    
-        num_of_pages = pdf.numPages
-        print(num_of_pages)
-        pages = pdf.getPage(num_of_pages) 
-        text = pages.extractText()
+        text = []
+        
+        for page in range(pdf.numPages):
+            pageObject = pdf.getPage(page)
+            text.append(pageObject.extractText())
 
         txt_path = os.path.join("./data/texts", Path(path).stem + ".txt")
+        
+        if os.path.exists(txt_path):
+            os.remove(txt_path)
 
-        with open(txt_path, 'w', encoding="utf8") as file2:
+        with open(txt_path, 'a', encoding="utf-8") as file2:
             file2.writelines(text)
 
 
