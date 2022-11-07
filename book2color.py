@@ -1,4 +1,5 @@
 import os
+import string
 from pathlib import Path
 from PyPDF2 import PdfFileReader
 
@@ -22,8 +23,10 @@ def extract_text_from_pdf(path: str):
             file2.writelines(text)
 
 
-def load_book(path: str):
-    pass
+def clean_text(text: str):
+    text.replace('\n', ' ').replace('\r', '')
+    text = text.translate(str.maketrans('', '', string.punctuation + string.digits))
+    return text
 
 
 if __name__ == "__main__":
