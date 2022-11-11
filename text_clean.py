@@ -3,7 +3,6 @@ import re
 import string
 from pathlib import Path
 from PyPDF2 import PdfFileReader
-from english_words import english_words_set
 
 
 def extract_text_from_pdf(path: str):
