@@ -1,20 +1,37 @@
 import os
+from tqdm import tqdm
+from pathlib import Path
 from transformers import pipeline
 
-emotions = ["love", "admiration", "joy", "pproval", "caring", "excitement", "amusement", "gratitude", "desire", "anger", "optimism", "disapproval", "grief", "annoyance", "pride", "curiosity", "neutral", "disgust", "disappointment", "realization", "fear", "relief", "confusion", "remorse", "embarrassment", "surprise", "sadness, nervousness]
 
-def load_all_texts(texts_folder_path: str = "./data/texts"):
-    txt_paths = [os.path.join(texts_folder_path, file) for file in os.listdir(texts_folder_path)]
-    text = []
+emotions = ["love", "admiration", "joy", "approval", "caring", "excitement", "amusement", 
+            "gratitude", "desire", "anger", "optimism", "disapproval", "grief", "annoyance", 
+            "pride", "curiosity", "neutral", "disgust", "disappointment", "realization", 
+            "fear", "relief", "confusion", "remorse", "embarrassment", "surprise", 
+            "sadness", "nervousness"]
+
+
+def analyze_all_texts(texts_folder_path: str = "./data/texts", output_path: str = "./data/emotions"):
+    emotion = pipeline('sentiment-analysis', model='arpanghoshal/EmoRoBERTa')
     
-    for path in txt_paths:
-        with open(path, "r") as file:
-            text.append(file.readlines()[0])
-
-    return text
+    Path(output_path).mkdir(parents=True, exist_ok=True)
+    
+    filenames = os.listdir(texts_folder_path)
+    txt_paths = [os.path.join(texts_folder_path, file) for file in filenames]
+    emotions_paths = [os.path.join(output_path, "analyzed_" + file) for file in filenames]
+    
+    for txt_path, emotion_path in zip(txt_paths, emotions_paths):
+        with open(txt_path, "r") as file:
+            print(f"\nAnalyzing {txt_path}\n")
+            
+            text = file.readlines()[0].split()
+            
+            with open(emotion_path, "w") as outfile:
+                for i in tqdm(range((len(text) // 100) - 1)):
+                    text_chunk = " ".join(text[i:i+100])
+                    detected_emotion = emotion(text_chunk)
+                    outfile.write(str(detected_emotion) + "\n")
 
 
 if __name__ == "__main__":
-    emotion = pipeline('sentiment-analysis', model='arpanghoshal/EmoRoBERTa')
-    emotion_labels = emotion("I hate mondays, pls kill me")
-    print(emotion_labels)
+    analyze_all_texts()
