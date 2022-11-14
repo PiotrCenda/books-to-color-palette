@@ -1,8 +1,15 @@
 import os
 import re
 import string
+from tqdm import tqdm
 from pathlib import Path
 from PyPDF2 import PdfFileReader
+
+
+def get_only_not_converted(path_from: str, path_to: str, to_prefix: str = ""):
+    return [os.path.join(path_from, file) for file in os.listdir(path_from) 
+            if (to_prefix + os.path.splitext(file)[0]) not in 
+            [os.path.splitext(filename)[0] for filename in os.listdir(path_to)]]
 
 
 def extract_text_from_pdf(path: str):
@@ -23,12 +30,10 @@ def extract_text_from_pdf(path: str):
             file2.writelines(text)
 
 
-def convert_all_pdfs_to_txt():
-    pdfs_folder_path = "./data/pdfs"
+def convert_all_pdfs_to_txt(pdfs_folder_path: str = "./data/pdfs"):
+    pdfs_paths = get_only_not_converted(path_from=pdfs_folder_path, path_to="./data/texts")
     
-    pdfs_paths = [os.path.join(pdfs_folder_path, file) for file in os.listdir(pdfs_folder_path)]
-    
-    for path in pdfs_paths:
+    for path in tqdm(pdfs_paths, desc="Converting files from pdf to txt"):
         extract_text_from_pdf(path)
 
 
@@ -42,7 +47,7 @@ def clean_text(text: str):
 def clean_all_texts(texts_folder_path: str = "./data/texts"):
     txt_paths = [os.path.join(texts_folder_path, file) for file in os.listdir(texts_folder_path)]
     
-    for path in txt_paths:
+    for path in tqdm(txt_paths, desc="Cleaning files"):
         text = []
         
         with open(path, 'r') as file:
@@ -56,7 +61,6 @@ def clean_all_texts(texts_folder_path: str = "./data/texts"):
 
 
 if __name__ == "__main__":
-    # convert_all_pdfs_to_txt()
+    convert_all_pdfs_to_txt()
     clean_all_texts()
-    
     

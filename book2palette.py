@@ -3,6 +3,8 @@ from tqdm import tqdm
 from pathlib import Path
 from transformers import pipeline
 
+from text_clean import get_only_not_converted
+
 
 emotions = ["love", "admiration", "joy", "approval", "caring", "excitement", "amusement", 
             "gratitude", "desire", "anger", "optimism", "disapproval", "grief", "annoyance", 
@@ -16,8 +18,8 @@ def analyze_all_texts(texts_folder_path: str = "./data/texts", output_path: str 
     
     Path(output_path).mkdir(parents=True, exist_ok=True)
     
-    filenames = os.listdir(texts_folder_path)
-    txt_paths = [os.path.join(texts_folder_path, file) for file in filenames]
+    txt_paths = get_only_not_converted(path_from=texts_folder_path, path_to=output_path, to_prefix="analyzed_")
+    filenames = [filepath.split(r"/")[-1] for filepath in txt_paths]
     emotions_paths = [os.path.join(output_path, "analyzed_" + file) for file in filenames]
     
     for txt_path, emotion_path in zip(txt_paths, emotions_paths):
