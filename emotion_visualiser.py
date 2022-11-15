@@ -32,6 +32,7 @@ COLORS = {"love" : (209, 239, 44),
         "sadness" : (85, 183, 255), 
         "nervousness" : (223, 164, 238)}
 
+
 def trim_line(text: str):
     for char in ['{', '[' , ']', '}', "'"]:
         if char in text:
@@ -40,8 +41,10 @@ def trim_line(text: str):
     text = text.split(': ')[1]
     return text.lower()
 
+
 def map_colors(txt_path: str = './data/emotions/analyzed_lolita.txt'):
     image = []
+    
     with open(txt_path, 'r') as f:
         lines = f.readlines()
         for line in lines:
@@ -52,6 +55,7 @@ def map_colors(txt_path: str = './data/emotions/analyzed_lolita.txt'):
     book_name = txt_path.split('/')[-1][:-4]
     image_path = image_path + book_name + '.png'
     image = np.expand_dims(np.array(image), axis=0).astype(np.uint8)
+    image = np.repeat(image[:, :], 100, axis=0)
     plt.imsave(image_path, image)
     print(image_path, 'saved!')
     
@@ -63,3 +67,4 @@ def convert_books_to_colors():
 
 if __name__ == "__main__":
     convert_books_to_colors()
+    
