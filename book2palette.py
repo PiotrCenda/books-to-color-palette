@@ -14,7 +14,7 @@ emotions = ["love", "admiration", "joy", "approval", "caring", "excitement", "am
 
 
 def analyze_all_texts(texts_folder_path: str = "./data/texts", output_path: str = "./data/emotions"):
-    emotion = pipeline('sentiment-analysis', model='arpanghoshal/EmoRoBERTa')
+    emotion = pipeline('sentiment-analysis', model='arpanghoshal/EmoRoBERTa', top_k=3)
     
     Path(output_path).mkdir(parents=True, exist_ok=True)
     
@@ -31,8 +31,8 @@ def analyze_all_texts(texts_folder_path: str = "./data/texts", output_path: str 
             with open(emotion_path, "w") as outfile:
                 for i in tqdm(range((len(text) // 100) - 1)):
                     text_chunk = " ".join(text[i:i+100])
-                    detected_emotion = emotion(text_chunk)
-                    outfile.write(str(detected_emotion) + "\n")
+                    detected_emotions = emotion(text_chunk)
+                    outfile.write(str(detected_emotions) + "\n")
 
 
 if __name__ == "__main__":
