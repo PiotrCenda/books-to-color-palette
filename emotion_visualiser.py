@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import cv2
 
 
 COLORS = {"love" : (209, 239, 44), 
@@ -33,6 +34,8 @@ COLORS = {"love" : (209, 239, 44),
         "nervousness" : (223, 164, 238)}
 
 
+STEPS = 10
+
 def trim_line(text: str):
     for char in ['{', '[' , ']', '}', "'"]:
         if char in text:
@@ -51,11 +54,42 @@ def map_colors(txt_path: str = './data/emotions/analyzed_lolita.txt'):
             emotion = trim_line(line)
             image.append(np.array(COLORS[emotion]))
 
+
+    changes_idx = {}
+    prev_color = image[0]
+    changes_idx[0] = prev_color
+    for i in range(1, len(image)):
+        next_color = image[i]
+        if tuple(prev_color) != tuple(next_color):
+            
+            xp = [0, 2 + STEPS]
+            fp_r = [prev_color[0], next_color[0]]
+            fp_g = [prev_color[1], next_color[1]]
+            fp_b = [prev_color[2], next_color[2]]
+            interp_r = np.interp([i+1 for i in range(STEPS)], xp, fp_r)
+            interp_g = np.interp([i+1 for i in range(STEPS)], xp, fp_g)
+            interp_b = np.interp([i+1 for i in range(STEPS)], xp, fp_b)
+            interp = np.array([np.array([interp_r[i], interp_g[i], interp_b[i]]) for i in range(len(interp_r))])
+            changes_idx[i] = interp
+
+        else:
+            changes_idx[i] = next_color
+        prev_color = next_color
+    image = []
+    for key in changes_idx.keys():
+        if len(changes_idx[key].shape) > 1:
+            for c in changes_idx[key]:
+                image.append(np.array(c))
+        else:
+            image.append(np.array(changes_idx[key]))
+        # print(changes_idx[key].shape)
+
     image_path = './data/images/'
     book_name = txt_path.split('/')[-1][:-4]
     image_path = image_path + book_name + '.png'
     image = np.expand_dims(np.array(image), axis=0).astype(np.uint8)
-    image = np.repeat(image[:, :], 100, axis=0)
+    image = np.repeat(image[:, :], 256, axis=0)
+
     plt.imsave(image_path, image)
     print(image_path, 'saved!')
     
