@@ -1,7 +1,15 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import os
 import cv2
+import json
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+# seed na podstawie nazwy
+# bloby na podstawie udziału emocji
+# gradient noise
+# 3d obraz
+# wizualizacja gif/slider
 
 
 COLORS = {"love" : (209, 239, 44), 
@@ -34,7 +42,7 @@ COLORS = {"love" : (209, 239, 44),
         "nervousness" : (223, 164, 238)}
 
 
-STEPS = 10
+STEPS = 1
 
 def trim_line(text: str):
     for char in ['{', '[' , ']', '}', "'"]:
@@ -45,19 +53,53 @@ def trim_line(text: str):
     return text.lower()
 
 
-def map_colors(txt_path: str = './data/emotions/analyzed_lolita.txt'):
+def load_emotions_from_line(text: str):
+    emotions = text.strip().replace("[", "").replace("]", "").split("}, {")
+    
+    for i in range(len(emotions)):
+        if emotions[i][0] != "{":
+            emotions[i] = "{" + emotions[i]
+        if emotions[i][-1] != "}":
+            emotions[i] = emotions[i] + "}"
+
+        emotions[i] = json.loads(emotions[i].replace("'", "\""))
+        
+    result = list(filter(lambda x: x["label"] != "neutral", emotions))
+    
+    return result
+
+
+def normalize(l):
+    s = sum(l)
+    return [i/s for i in l]
+
+
+def mix_emotions(emotions: dict):
+    img_strip = np.zeros((1, 100), dtype=object)
+    img_strip = sorted(list(np.random.choice([em["label"] for em in emotions], 
+                                             size=100, 
+                                             replace=True, 
+                                             p=normalize([em["score"] for em in emotions]))), 
+                       key=lambda x: [e["score"] for e in emotions if e["label"] == x])
+    print(img_strip)
+    return img_strip
+    
+
+def map_colors(txt_path: str):
     image = []
     
     with open(txt_path, 'r') as f:
         lines = f.readlines()
         for line in lines:
-            emotion = trim_line(line)
-            image.append(np.array(COLORS[emotion]))
-
+            emotions_dict = load_emotions_from_line(line)
+            ###mix_emotions()
+            mix_emotions(emotions_dict)
+            image.append(np.array(COLORS[emotions_dict[0]["label"]]))
 
     changes_idx = {}
     prev_color = image[0]
     changes_idx[0] = prev_color
+    
     for i in range(1, len(image)):
         next_color = image[i]
         if tuple(prev_color) != tuple(next_color):
@@ -74,8 +116,11 @@ def map_colors(txt_path: str = './data/emotions/analyzed_lolita.txt'):
 
         else:
             changes_idx[i] = next_color
+            
         prev_color = next_color
+    
     image = []
+    
     for key in changes_idx.keys():
         if len(changes_idx[key].shape) > 1:
             for c in changes_idx[key]:
