@@ -3,3 +3,6 @@ __pycache__/
 
 # IDE stuff
 .idea/
+
+# images, just generate them yourself
+./data/images/*

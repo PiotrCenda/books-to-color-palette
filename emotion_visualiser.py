@@ -75,13 +75,12 @@ def normalize(l):
 
 
 def mix_emotions(emotions: dict):
-    img_strip = np.zeros((1, 100), dtype=object)
     img_strip = sorted(list(np.random.choice([em["label"] for em in emotions], 
-                                             size=100, 
+                                             size=200, 
                                              replace=True, 
                                              p=normalize([em["score"] for em in emotions]))), 
                        key=lambda x: [e["score"] for e in emotions if e["label"] == x])
-    print(img_strip)
+
     return img_strip
     
 
@@ -90,50 +89,51 @@ def map_colors(txt_path: str):
     
     with open(txt_path, 'r') as f:
         lines = f.readlines()
+        
         for line in lines:
             emotions_dict = load_emotions_from_line(line)
-            ###mix_emotions()
-            mix_emotions(emotions_dict)
-            image.append(np.array(COLORS[emotions_dict[0]["label"]]))
-
-    changes_idx = {}
-    prev_color = image[0]
-    changes_idx[0] = prev_color
+            emotions_strip = mix_emotions(emotions_dict)
+            image.append(np.array([COLORS[em] for em in emotions_strip]))
     
-    for i in range(1, len(image)):
-        next_color = image[i]
-        if tuple(prev_color) != tuple(next_color):
-            
-            xp = [0, 2 + STEPS]
-            fp_r = [prev_color[0], next_color[0]]
-            fp_g = [prev_color[1], next_color[1]]
-            fp_b = [prev_color[2], next_color[2]]
-            interp_r = np.interp([i+1 for i in range(STEPS)], xp, fp_r)
-            interp_g = np.interp([i+1 for i in range(STEPS)], xp, fp_g)
-            interp_b = np.interp([i+1 for i in range(STEPS)], xp, fp_b)
-            interp = np.array([np.array([interp_r[i], interp_g[i], interp_b[i]]) for i in range(len(interp_r))])
-            changes_idx[i] = interp
+    ### Interpolation ###
+    #
+    # for i in range(100):
+    #     changes_idx = {}
+    #     prev_color = image[0]
+    #     changes_idx[0] = prev_color
+        
+    #     for i in range(1, len(image)):
+    #         next_color = image[i]
+    #         if tuple(prev_color) != tuple(next_color):
+                
+    #             xp = [0, 2 + STEPS]
+    #             fp_r = [prev_color[0], next_color[0]]
+    #             fp_g = [prev_color[1], next_color[1]]
+    #             fp_b = [prev_color[2], next_color[2]]
+    #             interp_r = np.interp([i+1 for i in range(STEPS)], xp, fp_r)
+    #             interp_g = np.interp([i+1 for i in range(STEPS)], xp, fp_g)
+    #             interp_b = np.interp([i+1 for i in range(STEPS)], xp, fp_b)
+    #             interp = np.array([np.array([interp_r[i], interp_g[i], interp_b[i]]) for i in range(len(interp_r))])
+    #             changes_idx[i] = interp
 
-        else:
-            changes_idx[i] = next_color
-            
-        prev_color = next_color
+    #         else:
+    #             changes_idx[i] = next_color
+                
+    #         prev_color = next_color
+        
+    #     image = []
+        
+    #     for key in changes_idx.keys():
+    #         if len(changes_idx[key].shape) > 1:
+    #             for c in changes_idx[key]:
+    #                 image.append(np.array(c))
+    #         else:
+    #             image.append(np.array(changes_idx[key]))
     
-    image = []
-    
-    for key in changes_idx.keys():
-        if len(changes_idx[key].shape) > 1:
-            for c in changes_idx[key]:
-                image.append(np.array(c))
-        else:
-            image.append(np.array(changes_idx[key]))
-        # print(changes_idx[key].shape)
-
     image_path = './data/images/'
     book_name = txt_path.split('/')[-1][:-4]
     image_path = image_path + book_name + '.png'
-    image = np.expand_dims(np.array(image), axis=0).astype(np.uint8)
-    image = np.repeat(image[:, :], 256, axis=0)
+    image = np.array(image).astype(np.uint8)
 
     plt.imsave(image_path, image)
     print(image_path, 'saved!')
