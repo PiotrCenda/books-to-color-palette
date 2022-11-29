@@ -42,7 +42,7 @@ COLORS = {"love" : (209, 239, 44),
         "nervousness" : (223, 164, 238)}
 
 
-STEPS = 1
+STEPS = 10
 
 def trim_line(text: str):
     for char in ['{', '[' , ']', '}', "'"]:
