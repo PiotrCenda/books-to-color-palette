@@ -1,15 +1,7 @@
 import os
-import cv2
 import json
 import numpy as np
 import matplotlib.pyplot as plt
-
-
-# seed na podstawie nazwy
-# bloby na podstawie udziału emocji
-# gradient noise
-# 3d obraz
-# wizualizacja gif/slider
 
 
 COLORS = {"love" : (209, 239, 44), 
@@ -65,6 +57,9 @@ def load_emotions_from_line(text: str):
         emotions[i] = json.loads(emotions[i].replace("'", "\""))
         
     result = list(filter(lambda x: x["label"] != "neutral", emotions))
+    
+    if len(result) > 4:
+        result = result[:4]
     
     return result
 

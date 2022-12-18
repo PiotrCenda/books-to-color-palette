@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def interpolant(t):
     return t*t*t*(t*(t*6 - 15) + 10)
 
@@ -29,6 +30,7 @@ def generate_perlin_noise_3d(
     grid = np.mgrid[0:res[0]:delta[0],0:res[1]:delta[1],0:res[2]:delta[2]]
     grid = np.mgrid[0:res[0]:delta[0],0:res[1]:delta[1],0:res[2]:delta[2]]
     grid = grid.transpose(1, 2, 3, 0) % 1
+    
     # Gradients
     theta = 2*np.pi*np.random.rand(res[0] + 1, res[1] + 1, res[2] + 1)
     phi = 2*np.pi*np.random.rand(res[0] + 1, res[1] + 1, res[2] + 1)
@@ -36,12 +38,14 @@ def generate_perlin_noise_3d(
         (np.sin(phi)*np.cos(theta), np.sin(phi)*np.sin(theta), np.cos(phi)),
         axis=3
     )
+    
     if tileable[0]:
         gradients[-1,:,:] = gradients[0,:,:]
     if tileable[1]:
         gradients[:,-1,:] = gradients[:,0,:]
     if tileable[2]:
         gradients[:,:,-1] = gradients[:,:,0]
+    
     gradients = gradients.repeat(d[0], 0).repeat(d[1], 1).repeat(d[2], 2)
     g000 = gradients[    :-d[0],    :-d[1],    :-d[2]]
     g100 = gradients[d[0]:     ,    :-d[1],    :-d[2]]
@@ -51,6 +55,7 @@ def generate_perlin_noise_3d(
     g101 = gradients[d[0]:     ,    :-d[1],d[2]:     ]
     g011 = gradients[    :-d[0],d[1]:     ,d[2]:     ]
     g111 = gradients[d[0]:     ,d[1]:     ,d[2]:     ]
+    
     # Ramps
     n000 = np.sum(np.stack((grid[:,:,:,0]  , grid[:,:,:,1]  , grid[:,:,:,2]  ), axis=3) * g000, 3)
     n100 = np.sum(np.stack((grid[:,:,:,0]-1, grid[:,:,:,1]  , grid[:,:,:,2]  ), axis=3) * g100, 3)
@@ -60,6 +65,7 @@ def generate_perlin_noise_3d(
     n101 = np.sum(np.stack((grid[:,:,:,0]-1, grid[:,:,:,1]  , grid[:,:,:,2]-1), axis=3) * g101, 3)
     n011 = np.sum(np.stack((grid[:,:,:,0]  , grid[:,:,:,1]-1, grid[:,:,:,2]-1), axis=3) * g011, 3)
     n111 = np.sum(np.stack((grid[:,:,:,0]-1, grid[:,:,:,1]-1, grid[:,:,:,2]-1), axis=3) * g111, 3)
+    
     # Interpolation
     t = interpolant(grid)
     n00 = n000*(1-t[:,:,:,0]) + t[:,:,:,0]*n100
@@ -99,6 +105,7 @@ def generate_fractal_noise_3d(
     noise = np.zeros(shape)
     frequency = 1
     amplitude = 1
+    
     for _ in range(octaves):
         noise += amplitude * generate_perlin_noise_3d(
             shape,
@@ -108,4 +115,5 @@ def generate_fractal_noise_3d(
         )
         frequency *= lacunarity
         amplitude *= persistence
+    
     return noise

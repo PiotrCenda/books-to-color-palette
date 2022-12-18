@@ -14,7 +14,7 @@ emotions = ["love", "admiration", "joy", "approval", "caring", "excitement", "am
 
 
 def analyze_all_texts(texts_folder_path: str = "./data/texts", output_path: str = "./data/emotions"):
-    emotion = pipeline('sentiment-analysis', model='arpanghoshal/EmoRoBERTa', top_k=3)
+    emotion = pipeline('sentiment-analysis', model='arpanghoshal/EmoRoBERTa', top_k=5)
     
     Path(output_path).mkdir(parents=True, exist_ok=True)
     

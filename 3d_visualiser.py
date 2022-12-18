@@ -1,19 +1,29 @@
-import matplotlib.pyplot as plt
 import numpy as np
-from perlin import generate_fractal_noise_3d
-from scipy.spatial.distance import cdist
 from tqdm import tqdm
+from pathlib import Path
+import matplotlib.pyplot as plt
+from scipy.spatial.distance import cdist
+
 from emotion_visualiser import mix_emotions, load_emotions_from_line, COLORS
+from perlin import generate_fractal_noise_3d
+from text_clean import get_only_not_converted
+
 
 def save_pic(img, path):
+    p = Path(path)
+    print(p.name, p.parent, p.parts[-2])
+    print(p.resolve())
+    print(p.stem)
     path = path.split('/')[-1][:-4]
     print(path)
+    
 
 def distance_from_center(shape, center = None):
     if center is None:
         center = np.array([[shape[1]//2, shape[2]//2]])
 
     img = np.zeros((shape[1], shape[2]))
+    
     for x in range(shape[1]):
         for y in range(shape[2]):
             point = np.array([[x, y]])
@@ -24,11 +34,13 @@ def distance_from_center(shape, center = None):
     # print(img.shape)
     return img
 
+
 def normalize(array):
     amin = np.min(array)
     amax = np.max(array)
 
     return (array - amin) / (amax - amin)
+
 
 def fit_colors_length(color_smaller, colors_bigger):
     smaller_len = len(color_smaller)
@@ -37,6 +49,7 @@ def fit_colors_length(color_smaller, colors_bigger):
 
     mapped_to_bigger = [[0, 0, 0] for _ in range(bigger_len)]
     sum_step = 0
+    
     for i in range(smaller_len):
         mapped_to_bigger[int(sum_step)] = color_smaller[i]
         sum_step += step
@@ -46,13 +59,12 @@ def fit_colors_length(color_smaller, colors_bigger):
     smaller_b = [c[2] for c in color_smaller]
     known_x = []
     unknown_x = []
+    
     for i, mapped in enumerate(mapped_to_bigger):
         if mapped[0] == 0 and mapped[1] == 0 and mapped[2] == 0:
             unknown_x.append(i)
         else:
             known_x.append(i)
-
-
 
     interp_r = np.interp(unknown_x, known_x, smaller_r)
     interp_g = np.interp(unknown_x, known_x, smaller_g)
@@ -63,7 +75,6 @@ def fit_colors_length(color_smaller, colors_bigger):
     return mapped_to_bigger
 
 
-
 def interpolate_color_list(colors, steps):
     interpolated_colors = []
     changes_idx = {}
@@ -71,9 +82,8 @@ def interpolate_color_list(colors, steps):
     changes_idx[0] = prev_color
     for i in range(len(colors)):
         next_color = colors[i]
+        
         if tuple(prev_color) != tuple(next_color):
-            # print('dupa')
-            
             xp = [0, 2 + steps]
             fp_r = [prev_color[0], next_color[0]]
             fp_g = [prev_color[1], next_color[1]]
@@ -99,8 +109,7 @@ def interpolate_color_list(colors, steps):
     return interpolated_colors
 
 
-
-def map_emotions_3d(txt_path):
+def map_emotions_3d(txt_path: str):
     thr1 = 0.75
     thr2 = 0.35
     STEPS = 5
@@ -144,7 +153,6 @@ def map_emotions_3d(txt_path):
         for f in frequencies:   
             pic1 += generate_fractal_noise_3d(in_shape, (f, f, f))/len(frequencies)
         
-        
         pic2 = pic1.copy()
         new_pic1 = []
         new_pic2 = []
@@ -155,7 +163,6 @@ def map_emotions_3d(txt_path):
             color1 = c1
             color2 = c2
             bg_color = (0, 0, 0)
-
 
             in_shape_slice = (1, W, H)
             rotate_factor = 1/32
@@ -168,7 +175,7 @@ def map_emotions_3d(txt_path):
             distance_map = distance_from_center(in_shape_slice, np.array([[W//2 + x1, H//2 + y1]]))
             distance_map2 = distance_from_center(in_shape_slice, np.array([[W//2 + x2, H//2 + y2]]))
             
-            s = np.random.uniform(0, 1,slice1.shape)
+            s = np.random.uniform(0, 1, slice1.shape)
 
             slice1 -= distance_map[0]
             slice2 -= distance_map2[0]
@@ -179,11 +186,9 @@ def map_emotions_3d(txt_path):
             slice2 = normalize(np.array(slice2 > thr2).astype(np.int8))
             bg_mask = 1 - ((slice1 + slice2) - (slice1 * slice2))
 
-
             bg = np.stack((bg_mask,)*3, axis=-1) * bg_color
 
             slice2 = slice2 - (slice2 * slice1)
-            
 
             slice1 = np.stack((slice1,)*3, axis=-1) * color1
             slice2 = np.stack((slice2,)*3, axis=-1) * color2
@@ -200,6 +205,5 @@ def map_emotions_3d(txt_path):
 
 
 if __name__ == "__main__":
-    # main()
-    map_emotions_3d('./data/emotions/analyzed_animal_farm.txt')
-
+    paths = get_only_not_converted(path_from="./data/emotions", path_to="./data/gifs")
+    map_emotions_3d(txt_path='./data/emotions/analyzed_animal_farm.txt')
