@@ -11,6 +11,26 @@ from text_clean import get_only_not_converted
 from perlin import generate_fractal_noise_3d
 
 
+def remap_emotion(emotion):
+    remap_dict = {
+        "approval" : 'joy', 
+        "caring" : 'love', 
+        "excitement" : 'joy', 
+        "amusement" : 'joy', 
+        "gratitude" : 'admiration', 
+        "optimism" : 'joy', 
+        "annoyance" : 'anger',
+        "disappointment" : 'grief', 
+        "relief" : 'joy', 
+        "confusion" : 'surprise', 
+        "sadness" : 'grief'}
+
+    if emotion in list(remap_dict.keys()):
+        return remap_dict[emotion]
+    else:
+        return emotion
+
+
 def make_gif(path, filename: str):
     frames_paths = sorted([os.path.join(path, name) for name in os.listdir(path)], key=len)
     frames = []
@@ -132,9 +152,9 @@ def interpolate_color_list(colors, steps):
 
 
 def map_emotions_3d(txt_path: str, filename: str):
-    thr1 = 0.75
+    thr1 = 0.6
     thr2 = 0.35
-    STEPS = 5
+    STEPS = 10
     seed = int("".join([str(ord(char)) for char in txt_path])[:7])
     np.random.seed(seed=seed)
 
@@ -143,15 +163,47 @@ def map_emotions_3d(txt_path: str, filename: str):
 
         colors1 = []
         colors2 = []
-        
+        colors_bg = []
+
         for i, line in enumerate(lines):
             emotions_dict = load_emotions_from_line(line)
-            colors1.append(COLORS[emotions_dict[0]['label']])
-            colors2.append(COLORS[emotions_dict[1]['label']])
+            em_bg = remap_emotion(emotions_dict[0]['label'])
+            em1 = remap_emotion(emotions_dict[1]['label'])
+            em2 = remap_emotion(emotions_dict[2]['label'])
+            colors_bg.append(COLORS[em_bg])
+            colors1.append(COLORS[em1])
+            colors2.append(COLORS[em2])
 
         ic1 = interpolate_color_list(colors1, STEPS)
-        ic2 = interpolate_color_list(colors2, STEPS)[:640]
+        ic2 = interpolate_color_list(colors2, STEPS)
+        ic_bg = interpolate_color_list(colors_bg, STEPS)
+        print(len(ic_bg))
+        print(len(ic1))
+        print(len(ic2))
 
+        colors_len_dict = {len(ic2) : ic2, len(ic1) : ic1, len(ic_bg) : ic_bg}
+        colors_len_dict = dict(sorted(colors_len_dict.items()))
+
+        colors_keys = list(colors_len_dict.keys())
+        # print(colors_len_dict[colors_keys[0]])
+
+        ic_bg = fit_colors_length(colors_len_dict[colors_keys[0]], colors_len_dict[colors_keys[2]])
+        ic1 = fit_colors_length(colors_len_dict[colors_keys[1]], colors_len_dict[colors_keys[2]])
+        ic2 = colors_len_dict[colors_keys[2]]
+
+        print(len(ic_bg))
+        print(len(ic1))
+        print(len(ic2))
+        
+        if len(ic_bg) % 2 != 0:
+            ic_bg = ic_bg[:-1]
+            ic1 = ic1[:-1]
+            ic2 = ic2[:-1]
+
+        print(len(ic_bg))
+        print(len(ic1))
+        print(len(ic2))
+        
         if len(ic1) < len(ic2):
             ic1 = fit_colors_length(ic1, ic2)
         else:
@@ -160,10 +212,10 @@ def map_emotions_3d(txt_path: str, filename: str):
     with open(txt_path, 'r') as f:
         lines = f.readlines()
 
-        W, H = 256, 256
+        W, H = 512, 512
         in_shape = (len(ic1), W, H)
         pic1 = np.zeros(in_shape)
-        frequencies = [1,2,4,8]
+        frequencies = [1, 2]
 
         for f in tqdm(frequencies, desc="Generating fractal noise"):   
             pic1 += generate_fractal_noise_3d(in_shape, (f, f, f))/len(frequencies)
@@ -172,12 +224,12 @@ def map_emotions_3d(txt_path: str, filename: str):
         new_pic1 = []
         new_pic2 = []
 
-        for i, (c1, c2, slice1, slice2) in tqdm(enumerate(zip(ic1, ic2, pic1, pic2)), desc="Generating vizualization", total=len(ic1)):
+        for i, (c1, c2, c_bg, slice1, slice2) in tqdm(enumerate(zip(ic1, ic2, ic_bg, pic1, pic2)), desc="Generating vizualization", total=len(ic1)):
             emotions_dict = load_emotions_from_line(line)
 
             color1 = c1
             color2 = c2
-            bg_color = (0, 0, 0)
+            bg_color = c_bg
 
             in_shape_slice = (1, W, H)
             rotate_factor = 1/32
@@ -221,4 +273,4 @@ def map_emotions_3d(txt_path: str, filename: str):
 
 if __name__ == "__main__":
     paths = get_only_not_converted(path_from="./data/emotions", path_to="./data/gifs")
-    map_emotions_3d(txt_path='./data/emotions/analyzed_animal_farm.txt', filename="test_256")
+    map_emotions_3d(txt_path='./data/emotions/analyzed_animal_farm.txt', filename="test_256.gif")
