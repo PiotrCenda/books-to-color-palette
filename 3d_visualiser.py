@@ -1,24 +1,46 @@
+import os
+import glob
 import numpy as np
 from tqdm import tqdm
-from pathlib import Path
-import matplotlib.pyplot as plt
+from PIL import Image
+import matplotlib.image as mpimg
 from scipy.spatial.distance import cdist
 
-from emotion_visualiser import mix_emotions, load_emotions_from_line, COLORS
-from perlin import generate_fractal_noise_3d
+from emotion_visualiser import load_emotions_from_line, COLORS
 from text_clean import get_only_not_converted
+from perlin import generate_fractal_noise_3d
 
 
-def save_pic(img, path):
-    p = Path(path)
-    print(p.name, p.parent, p.parts[-2])
-    print(p.resolve())
-    print(p.stem)
-    path = path.split('/')[-1][:-4]
-    print(path)
+def make_gif(path, filename: str):
+    frames_paths = sorted([os.path.join(path, name) for name in os.listdir(path)], key=len)
+    frames = []
+
+    for fpath in frames_paths:
+        img = Image.open(fpath)
+        frames.append(img)
+        
+    frame_one = frames[0]
+    frame_one.save(os.path.join(path, filename), format="GIF", append_images=frames,
+                   save_all=True, duration=100, loop=0)
+    
+    for png_file in glob.glob(os.path.join(path, "*.png")):
+        os.remove(png_file)
     
 
-def distance_from_center(shape, center = None):
+def save_pic(img, path, filename: str):
+    print(img.shape)
+    name = path.split('/')[-1][:-4] 
+    save_path = os.path.join('data', 'gifs', name)
+    os.makedirs(save_path, exist_ok=True)
+    
+    for i, slice in tqdm(enumerate(img)):
+        img_save_path = os.path.join(save_path, str(i) + '.png')
+        mpimg.imsave(img_save_path, normalize(slice[0]))
+
+    make_gif(save_path, filename)
+    
+
+def distance_from_center(shape, center=None):
     if center is None:
         center = np.array([[shape[1]//2, shape[2]//2]])
 
@@ -31,7 +53,6 @@ def distance_from_center(shape, center = None):
 
     img = img/(np.max(img))
     img = np.array([img for _ in range(shape[0])])
-    # print(img.shape)
     return img
 
 
@@ -80,6 +101,7 @@ def interpolate_color_list(colors, steps):
     changes_idx = {}
     prev_color = colors[0]
     changes_idx[0] = prev_color
+    
     for i in range(len(colors)):
         next_color = colors[i]
         
@@ -109,7 +131,7 @@ def interpolate_color_list(colors, steps):
     return interpolated_colors
 
 
-def map_emotions_3d(txt_path: str):
+def map_emotions_3d(txt_path: str, filename: str):
     thr1 = 0.75
     thr2 = 0.35
     STEPS = 5
@@ -121,43 +143,36 @@ def map_emotions_3d(txt_path: str):
 
         colors1 = []
         colors2 = []
+        
         for i, line in enumerate(lines):
             emotions_dict = load_emotions_from_line(line)
             colors1.append(COLORS[emotions_dict[0]['label']])
             colors2.append(COLORS[emotions_dict[1]['label']])
 
-        print(len(colors1))
-        print(len(colors2))
-
         ic1 = interpolate_color_list(colors1, STEPS)
-        ic2 = interpolate_color_list(colors2, STEPS)
-        print(len(ic1))
-        print(len(ic2))
+        ic2 = interpolate_color_list(colors2, STEPS)[:640]
 
         if len(ic1) < len(ic2):
             ic1 = fit_colors_length(ic1, ic2)
         else:
             ic2 = fit_colors_length(ic2, ic1)
 
-        print(len(ic1))
-        print(len(ic2))
-
     with open(txt_path, 'r') as f:
         lines = f.readlines()
 
-        W, H = 16, 16
+        W, H = 256, 256
         in_shape = (len(ic1), W, H)
         pic1 = np.zeros(in_shape)
-        frequencies = [1]
+        frequencies = [1,2,4,8]
 
-        for f in frequencies:   
+        for f in tqdm(frequencies, desc="Generating fractal noise"):   
             pic1 += generate_fractal_noise_3d(in_shape, (f, f, f))/len(frequencies)
         
         pic2 = pic1.copy()
         new_pic1 = []
         new_pic2 = []
 
-        for i, (c1, c2, slice1, slice2) in tqdm(enumerate(zip(ic1, ic2, pic1, pic2))):
+        for i, (c1, c2, slice1, slice2) in tqdm(enumerate(zip(ic1, ic2, pic1, pic2)), desc="Generating vizualization", total=len(ic1)):
             emotions_dict = load_emotions_from_line(line)
 
             color1 = c1
@@ -201,9 +216,9 @@ def map_emotions_3d(txt_path: str):
 
         pic = new_pic1 + new_pic2
 
-        save_pic(pic, txt_path)
+        save_pic(pic, txt_path, filename)
 
 
 if __name__ == "__main__":
     paths = get_only_not_converted(path_from="./data/emotions", path_to="./data/gifs")
-    map_emotions_3d(txt_path='./data/emotions/analyzed_animal_farm.txt')
+    map_emotions_3d(txt_path='./data/emotions/analyzed_animal_farm.txt', filename="test_256")
