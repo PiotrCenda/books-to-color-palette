@@ -1,13 +1,38 @@
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 import numpy as np
 from perlin import generate_fractal_noise_3d
 from scipy.spatial.distance import cdist
 from tqdm import tqdm
+import os
 from emotion_visualiser import mix_emotions, load_emotions_from_line, COLORS
+from PIL import Image
+
+def make_gif(path):
+    frames_paths = sorted([os.path.join(path, name) for name in os.listdir(path)], key=len)
+    # print(frames_paths)
+    frames = []
+
+    for fpath in frames_paths:
+        img = Image.open(fpath)
+        frames.append(img)
+        
+    frame_one = frames[0]
+    frame_one.save(os.path.join(path, 'test.gif'), format="GIF", append_images=frames,
+                   save_all=True, duration=100, loop=0)
 
 def save_pic(img, path):
-    path = path.split('/')[-1][:-4]
-    print(path)
+    print(img.shape)
+    name = path.split('/')[-1][:-4] 
+    save_path = os.path.join('data', 'gifs', name)
+    os.makedirs(save_path, exist_ok=True)
+    for i, slice in tqdm(enumerate(img)):
+        img_save_path = os.path.join(save_path, str(i) + '.png')
+        mpimg.imsave(img_save_path, normalize(slice[0]))
+
+
+    make_gif(save_path)
+    
 
 def distance_from_center(shape, center = None):
     if center is None:
@@ -121,7 +146,7 @@ def map_emotions_3d(txt_path):
         print(len(colors2))
 
         ic1 = interpolate_color_list(colors1, STEPS)
-        ic2 = interpolate_color_list(colors2, STEPS)
+        ic2 = interpolate_color_list(colors2, STEPS)[:640]
         print(len(ic1))
         print(len(ic2))
 
@@ -136,10 +161,10 @@ def map_emotions_3d(txt_path):
     with open(txt_path, 'r') as f:
         lines = f.readlines()
 
-        W, H = 16, 16
+        W, H = 256, 256
         in_shape = (len(ic1), W, H)
         pic1 = np.zeros(in_shape)
-        frequencies = [1]
+        frequencies = [1,2,4,8]
 
         for f in frequencies:   
             pic1 += generate_fractal_noise_3d(in_shape, (f, f, f))/len(frequencies)

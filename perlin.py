@@ -96,7 +96,7 @@ def generate_fractal_noise_3d(
         ValueError: If shape is not a multiple of
             (lacunarity**(octaves-1)*res).
     """
-    noise = np.zeros(shape)
+    noise = np.zeros(shape, dtype=np.float16)
     frequency = 1
     amplitude = 1
     for _ in range(octaves):
