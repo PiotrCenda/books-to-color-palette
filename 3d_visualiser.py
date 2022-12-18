@@ -40,22 +40,23 @@ def make_gif(path, filename: str):
         frames.append(img)
         
     frame_one = frames[0]
-    frame_one.save(os.path.join(path, filename), format="GIF", append_images=frames,
+    frame_one.save(os.path.join(path, filename + ".gif"), format="GIF", append_images=frames,
                    save_all=True, duration=100, loop=0)
+    
+    print("Cleaning temp files...")
     
     for png_file in glob.glob(os.path.join(path, "*.png")):
         os.remove(png_file)
     
 
-def save_pic(img, path, filename: str):
-    print(img.shape)
-    name = path.split('/')[-1][:-4] 
+def save_gif(img, path, filename: str):
+    name = path.split("\\")[-1][:-4]
     save_path = os.path.join('data', 'gifs', name)
     os.makedirs(save_path, exist_ok=True)
     
-    for i, slice in tqdm(enumerate(img)):
+    for i, gif_slice in tqdm(enumerate(img), desc="Creating gif", total=len(img)):
         img_save_path = os.path.join(save_path, str(i) + '.png')
-        mpimg.imsave(img_save_path, normalize(slice[0]))
+        mpimg.imsave(img_save_path, normalize(gif_slice[0]))
 
     make_gif(save_path, filename)
     
@@ -151,8 +152,10 @@ def interpolate_color_list(colors, steps):
     return interpolated_colors
 
 
-def map_emotions_3d(txt_path: str, filename: str):
-    thr1 = 0.6
+
+
+def map_emotions_3d(txt_path: str, filename: str, shape: tuple):
+    thr1 = 0.60
     thr2 = 0.35
     STEPS = 10
     seed = int("".join([str(ord(char)) for char in txt_path])[:7])
@@ -212,10 +215,12 @@ def map_emotions_3d(txt_path: str, filename: str):
     with open(txt_path, 'r') as f:
         lines = f.readlines()
 
+
         W, H = 512, 512
         in_shape = (len(ic1), W, H)
         pic1 = np.zeros(in_shape)
         frequencies = [1, 2]
+
 
         for f in tqdm(frequencies, desc="Generating fractal noise"):   
             pic1 += generate_fractal_noise_3d(in_shape, (f, f, f))/len(frequencies)
@@ -268,9 +273,20 @@ def map_emotions_3d(txt_path: str, filename: str):
 
         pic = new_pic1 + new_pic2
 
-        save_pic(pic, txt_path, filename)
+        save_gif(pic, txt_path, filename)
 
 
 if __name__ == "__main__":
     paths = get_only_not_converted(path_from="./data/emotions", path_to="./data/gifs")
+# <<<<<<< HEAD
     map_emotions_3d(txt_path='./data/emotions/analyzed_animal_farm.txt', filename="test_256.gif")
+# =======
+#     shape = (32, 32)
+    
+#     for path in paths:
+#         try:
+#             print(f"Creating vizualization for {path.split()[-1]}")
+#             map_emotions_3d(txt_path=path, filename=str(shape[0]), shape=shape)
+#         except Exception as e:
+#             print("Ups: ", e)
+# >>>>>>> 8507aad5a0d1a639af885b3f90649f3512fae5ba

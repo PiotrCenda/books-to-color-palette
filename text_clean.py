@@ -8,7 +8,7 @@ from PyPDF2 import PdfFileReader
 
 def get_only_not_converted(path_from: str, path_to: str, to_prefix: str = ""):
     Path(path_to).mkdir(parents=True, exist_ok=True)
-    return [os.path.join(path_from, file) for file in os.listdir(path_from) 
+    return [str(Path(os.path.join(path_from, file))) for file in os.listdir(path_from) 
             if (to_prefix + os.path.splitext(file)[0]) not in 
             [os.path.splitext(filename)[0] for filename in os.listdir(path_to)]]
 
