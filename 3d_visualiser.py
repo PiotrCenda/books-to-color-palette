@@ -3,13 +3,20 @@ import glob
 import numpy as np
 from tqdm import tqdm
 from PIL import Image
+from pathlib import Path
 import matplotlib.image as mpimg
 from scipy.spatial.distance import cdist
 
 from emotion_visualiser import load_emotions_from_line, COLORS
-from text_clean import get_only_not_converted
 from perlin import generate_fractal_noise_3d
 
+
+def get_paths(path_from: str, path_to: str, to_prefix: str = ""):
+    Path(path_to).mkdir(parents=True, exist_ok=True)
+    return [str(Path(os.path.join(path_from, file))) for file in os.listdir(path_from) 
+            if (to_prefix + os.path.splitext(file)[0]) not in 
+            [os.path.splitext(filename)[0] for filename in os.listdir(path_to)]]
+    
 
 def make_gif(path, filename: str):
     frames_paths = sorted([os.path.join(path, name) for name in os.listdir(path)], key=len)
@@ -30,7 +37,7 @@ def make_gif(path, filename: str):
     
 
 def save_gif(img, path, filename: str):
-    name = path.split("\\")[-1][:-4]
+    name = Path(path).name
     save_path = os.path.join('data', 'gifs', name)
     os.makedirs(save_path, exist_ok=True)
     
@@ -221,12 +228,12 @@ def map_emotions_3d(txt_path: str, filename: str, shape: tuple):
 
 
 if __name__ == "__main__":
-    paths = get_only_not_converted(path_from="./data/emotions", path_to="./data/gifs")
+    paths = get_paths(path_from="./data/emotions", path_to="./data/gifs")
     shape = (32, 32)
     
     for path in paths:
         try:
-            print(f"Creating vizualization for {path.split()[-1]}")
+            print(f"Creating vizualization for {path.split('/')[-1]} for shape {shape}")
             map_emotions_3d(txt_path=path, filename=str(shape[0]), shape=shape)
         except Exception as e:
             print("Ups: ", e)
