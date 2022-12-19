@@ -40,7 +40,7 @@ def remap_emotion(emotion):
 
 
 def make_gif(path, filename: str):
-    frames_paths = sorted([os.path.join(path, name) for name in os.listdir(path)], key=len)
+    frames_paths = sorted([os.path.join(path, name) for name in os.listdir(path) if name[-4:] != ".gif"], key=lambda x: int(Path(x).name[:-4]))
     frames = []
 
     for fpath in frames_paths:
@@ -287,17 +287,18 @@ def map_emotions_3d(txt_path: str, filename: str, shape: tuple, steps: int):
 
 if __name__ == "__main__":
     paths = get_paths(path_from="./data/emotions", path_to="./data/gifs")
-    shape = (128, 128)
+    shape = (1024, 1024)
     steps = 10
-    
-    total_start = perf_counter()
     
     for path in paths:
         try:
+            total_start = perf_counter()
+            
             print(f"Creating vizualization for {Path(path).name} for shape {shape} and steps {steps}")
             map_emotions_3d(txt_path=path, filename=(str(shape[0]) + f"_step_{steps}"), shape=shape, steps=steps)
+            
+            total_stop = perf_counter()
+            print(f"\nTotal time: {total_stop - total_start} s\n")
+            
         except Exception as e:
             print("Ups: ", e)
-    
-    total_stop = perf_counter()
-    print(f"\nTotal time: {total_stop - total_start} s\n")
