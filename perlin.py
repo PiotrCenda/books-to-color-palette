@@ -27,13 +27,13 @@ def generate_perlin_noise_3d(
     """
     delta = (res[0] / shape[0], res[1] / shape[1], res[2] / shape[2])
     d = (shape[0] // res[0], shape[1] // res[1], shape[2] // res[2])
-    grid = np.mgrid[0:res[0]:delta[0],0:res[1]:delta[1],0:res[2]:delta[2]]
-    grid = np.mgrid[0:res[0]:delta[0],0:res[1]:delta[1],0:res[2]:delta[2]]
+    grid = np.mgrid[0:res[0]:delta[0],0:res[1]:delta[1],0:res[2]:delta[2]].astype(np.float16)
+    grid = np.mgrid[0:res[0]:delta[0],0:res[1]:delta[1],0:res[2]:delta[2]].astype(np.float16)
     grid = grid.transpose(1, 2, 3, 0) % 1
     
     # Gradients
-    theta = 2*np.pi*np.random.rand(res[0] + 1, res[1] + 1, res[2] + 1)
-    phi = 2*np.pi*np.random.rand(res[0] + 1, res[1] + 1, res[2] + 1)
+    theta = 2*np.pi*np.random.rand(res[0] + 1, res[1] + 1, res[2] + 1).astype(np.float16)
+    phi = 2*np.pi*np.random.rand(res[0] + 1, res[1] + 1, res[2] + 1).astype(np.float16)
     gradients = np.stack(
         (np.sin(phi)*np.cos(theta), np.sin(phi)*np.sin(theta), np.cos(phi)),
         axis=3
@@ -74,7 +74,8 @@ def generate_perlin_noise_3d(
     n11 = n011*(1-t[:,:,:,0]) + t[:,:,:,0]*n111
     n0 = (1-t[:,:,:,1])*n00 + t[:,:,:,1]*n10
     n1 = (1-t[:,:,:,1])*n01 + t[:,:,:,1]*n11
-    return ((1-t[:,:,:,2])*n0 + t[:,:,:,2]*n1)
+    
+    return ((1 - t[:,:,:,2]) * n0 + t[:,:,:,2] * n1)
 
 
 def generate_fractal_noise_3d(

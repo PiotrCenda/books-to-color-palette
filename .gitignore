@@ -5,4 +5,5 @@ __pycache__/
 .idea/
 
 # images, just generate them yourself
-./data/images/*
+./data/images/
+./data/gifs/

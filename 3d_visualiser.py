@@ -4,8 +4,10 @@ import numpy as np
 from tqdm import tqdm
 from PIL import Image
 from pathlib import Path
+from itertools import repeat
 from time import perf_counter
 import matplotlib.image as mpimg
+from multiprocessing import Pool
 from scipy.spatial.distance import cdist
 
 from emotion_visualiser import load_emotions_from_line, COLORS
@@ -118,6 +120,7 @@ def fit_colors_length(color_smaller, colors_bigger):
     interp_r = np.interp(unknown_x, known_x, smaller_r)
     interp_g = np.interp(unknown_x, known_x, smaller_g)
     interp_b = np.interp(unknown_x, known_x, smaller_b)
+    
     for i, unknown in enumerate(unknown_x):
         mapped_to_bigger[unknown] = (interp_r[i], interp_g[i], interp_b[i])
 
@@ -159,21 +162,56 @@ def interpolate_color_list(colors, steps):
     return interpolated_colors
 
 
-def map_emotions_3d(txt_path: str, filename: str, shape: tuple):
+def vis_worker(i, c1, c2, c_bg, slice1, slice2, W, H):
     thr1 = 0.60
     thr2 = 0.35
-    STEPS = 4
+    color1 = c1
+    color2 = c2
+    bg_color = c_bg
+
+    in_shape_slice = (1, W, H)
+    rotate_factor = 1/32
+    distance = W * 7 / 3
+    x1 = np.cos(np.pi + i*np.pi*rotate_factor) * distance
+    x2 = np.cos(i*np.pi*rotate_factor) * distance
+    y1 = np.sin(np.pi + i*np.pi*rotate_factor) * distance
+    y2 = np.sin(i*np.pi*rotate_factor) * distance
+
+    distance_map = distance_from_center(in_shape_slice, np.array([[W//2 + x1, H//2 + y1]]))
+    distance_map2 = distance_from_center(in_shape_slice, np.array([[W//2 + x2, H//2 + y2]]))
+    
+    s = np.random.uniform(0, 1, slice1.shape)
+
+    slice1 -= distance_map[0]
+    slice2 -= distance_map2[0]
+    slice1 = normalize(slice1) * (1 - (distance_map * s))
+    slice2 = normalize(slice2)  * (1 - (distance_map2 * s ))
+
+    slice1 = normalize(np.array(slice1 > thr1).astype(np.int8))
+    slice2 = normalize(np.array(slice2 > thr2).astype(np.int8))
+    bg_mask = 1 - ((slice1 + slice2) - (slice1 * slice2))
+
+    bg = np.stack((bg_mask,)*3, axis=-1) * bg_color
+
+    slice2 = slice2 - (slice2 * slice1)
+
+    slice1 = np.stack((slice1,)*3, axis=-1) * color1 + bg
+    slice2 = np.stack((slice2,)*3, axis=-1) * color2
+    
+    return slice1, slice2
+
+
+def map_emotions_3d(txt_path: str, filename: str, shape: tuple, steps: int):
     seed = int("".join([str(ord(char)) for char in txt_path])[:7])
     np.random.seed(seed=seed)
 
     with open(txt_path, 'r') as f:
         lines = f.readlines()
-
         colors1 = []
         colors2 = []
         colors_bg = []
 
-        for i, line in enumerate(lines):
+        for line in lines:
             emotions_dict = load_emotions_from_line(line)
             em_bg = remap_emotion(emotions_dict[0]['label'])
             em1 = remap_emotion(emotions_dict[1]['label'])
@@ -182,9 +220,9 @@ def map_emotions_3d(txt_path: str, filename: str, shape: tuple):
             colors1.append(COLORS[em1])
             colors2.append(COLORS[em2])
 
-        ic1 = interpolate_color_list(colors1, STEPS)
-        ic2 = interpolate_color_list(colors2, STEPS)
-        ic_bg = interpolate_color_list(colors_bg, STEPS)
+        ic1 = interpolate_color_list(colors1, steps)
+        ic2 = interpolate_color_list(colors2, steps)
+        ic_bg = interpolate_color_list(colors_bg, steps)
 
         colors_len_dict = {len(ic2) : ic2, len(ic1) : ic1, len(ic_bg) : ic_bg}
         colors_len_dict = dict(sorted(colors_len_dict.items()))
@@ -220,55 +258,25 @@ def map_emotions_3d(txt_path: str, filename: str, shape: tuple):
             pic1 += generate_fractal_noise_3d(in_shape, (f, f, f))/len(frequencies)
         
         stop = perf_counter()
-        print(f"Generating fractal noise: {stop-start}s")
+        print(f"Generating fractal noise: {stop - start}s")
         
         pic2 = pic1.copy()
         new_pic1 = []
         new_pic2 = []
 
         start = perf_counter()
-        
-        for i, (c1, c2, c_bg, slice1, slice2) in tqdm(enumerate(zip(ic1, ic2, ic_bg, pic1, pic2)), desc="Generating vizualization", total=len(ic1)):
-            emotions_dict = load_emotions_from_line(line)
 
-            color1 = c1
-            color2 = c2
-            bg_color = c_bg
+        args = zip([i for i in range(len(ic1))], ic1, ic2, ic_bg, pic1, pic2, repeat(W), repeat(H))
+    
+        with Pool(os.cpu_count()) as p:
+            results = p.starmap(vis_worker, args)
 
-            in_shape_slice = (1, W, H)
-            rotate_factor = 1/32
-            distance = W * 7 / 3
-            x1 = np.cos(np.pi + i*np.pi*rotate_factor) * distance
-            x2 = np.cos(i*np.pi*rotate_factor) * distance
-            y1 = np.sin(np.pi + i*np.pi*rotate_factor) * distance
-            y2 = np.sin(i*np.pi*rotate_factor) * distance
-
-            distance_map = distance_from_center(in_shape_slice, np.array([[W//2 + x1, H//2 + y1]]))
-            distance_map2 = distance_from_center(in_shape_slice, np.array([[W//2 + x2, H//2 + y2]]))
-            
-            s = np.random.uniform(0, 1, slice1.shape)
-
-            slice1 -= distance_map[0]
-            slice2 -= distance_map2[0]
-            slice1 = normalize(slice1) * (1 - (distance_map * s))
-            slice2 = normalize(slice2)  * (1 - (distance_map2 * s ))
-
-            slice1 = normalize(np.array(slice1 > thr1).astype(np.int8))
-            slice2 = normalize(np.array(slice2 > thr2).astype(np.int8))
-            bg_mask = 1 - ((slice1 + slice2) - (slice1 * slice2))
-
-            bg = np.stack((bg_mask,)*3, axis=-1) * bg_color
-
-            slice2 = slice2 - (slice2 * slice1)
-
-            slice1 = np.stack((slice1,)*3, axis=-1) * color1
-            slice2 = np.stack((slice2,)*3, axis=-1) * color2
-
-            new_pic1.append(slice1 + bg) 
+        for slice1, slice2 in results:
+            new_pic1.append(slice1) 
             new_pic2.append(slice2)
         
         stop = perf_counter()
-        print(f"Generating vizualization noise: {stop-start}s") 
+        print(f"Generating vizualization noise: {stop - start}s") 
 
         new_pic1 = np.array(new_pic1)
         new_pic2 = np.array(new_pic2)
@@ -281,10 +289,16 @@ def map_emotions_3d(txt_path: str, filename: str, shape: tuple):
 if __name__ == "__main__":
     paths = get_paths(path_from="./data/emotions", path_to="./data/gifs")
     shape = (32, 32)
+    steps = 10
+    
+    total_start = perf_counter()
     
     for path in paths:
         try:
-            print(f"Creating vizualization for {Path(path).name} for shape {shape}")
-            map_emotions_3d(txt_path=path, filename=str(shape[0]), shape=shape)
+            print(f"Creating vizualization for {Path(path).name} for shape {shape} and steps {steps}")
+            map_emotions_3d(txt_path=path, filename=(str(shape[0]) + f"_step_{steps}"), shape=shape, steps=steps)
         except Exception as e:
             print("Ups: ", e)
+    
+    total_stop = perf_counter()
+    print(f"\nTotal time: {total_stop - total_start} s\n")
