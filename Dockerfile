@@ -1,7 +1,7 @@
-FROM ubuntu:20.04
+FROM ubuntu:focal
 
-RUN apt update && apt -y upgrade
-RUN apt -y install python3-pip
+RUN apt-get update && apt -y upgrade
+RUN apt-get -y install python3-pip
 RUN pip3 install numpy tqdm matplotlib scipy
 
 WORKDIR /usr/test

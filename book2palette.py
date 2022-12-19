@@ -1,7 +1,7 @@
 import os
 from tqdm import tqdm
 from pathlib import Path
-from transformers import pipeline
+from transformers import pipeline, AutoTokenizer
 
 from text_clean import get_only_not_converted
 
@@ -14,7 +14,9 @@ emotions = ["love", "admiration", "joy", "approval", "caring", "excitement", "am
 
 
 def analyze_all_texts(texts_folder_path: str = "./data/texts", output_path: str = "./data/emotions"):
-    emotion = pipeline('sentiment-analysis', model='arpanghoshal/EmoRoBERTa', top_k=5)
+    model_name = "arpanghoshal/EmoRoBERTa"    
+    tokenizer = AutoTokenizer.from_pretrained(model_name, model_max_length=512)
+    emotion = pipeline("sentiment-analysis", model=model_name, tokenizer=tokenizer, top_k=5)
     
     Path(output_path).mkdir(parents=True, exist_ok=True)
     
@@ -29,9 +31,9 @@ def analyze_all_texts(texts_folder_path: str = "./data/texts", output_path: str 
             text = file.readlines()[0].split()
             
             with open(emotion_path, "w", encoding="utf8") as outfile:
-                for i in tqdm(range((len(text) // 100) - 1)):
-                    text_chunk = " ".join(text[i:i+100])
-                    detected_emotions = emotion(text_chunk)
+                for i in tqdm(range((len(text) // 500) - 1)):
+                    text_chunk = " ".join(text[i:i+500])
+                    detected_emotions = emotion(text_chunk, padding=True, truncation=True)
                     outfile.write(str(detected_emotions[0]) + "\n")
 
 

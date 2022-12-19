@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from PIL import Image
 from pathlib import Path
+from time import perf_counter
 import matplotlib.image as mpimg
 from scipy.spatial.distance import cdist
 
@@ -13,9 +14,7 @@ from perlin import generate_fractal_noise_3d
 
 def get_paths(path_from: str, path_to: str, to_prefix: str = ""):
     Path(path_to).mkdir(parents=True, exist_ok=True)
-    return [str(Path(os.path.join(path_from, file))) for file in os.listdir(path_from) 
-            if (to_prefix + os.path.splitext(file)[0]) not in 
-            [os.path.splitext(filename)[0] for filename in os.listdir(path_to)]]
+    return [str(Path(os.path.join(path_from, file))) for file in os.listdir(path_from)]
     
 
 def remap_emotion(emotion):
@@ -57,7 +56,8 @@ def make_gif(path, filename: str):
     
 
 def save_gif(img, path, filename: str):
-    name = Path(path).name
+    name = Path(path).name[:-4]
+    print(name)
     save_path = os.path.join('data', 'gifs', name)
     os.makedirs(save_path, exist_ok=True)
     
@@ -159,12 +159,10 @@ def interpolate_color_list(colors, steps):
     return interpolated_colors
 
 
-
-
 def map_emotions_3d(txt_path: str, filename: str, shape: tuple):
     thr1 = 0.60
     thr2 = 0.35
-    STEPS = 10
+    STEPS = 4
     seed = int("".join([str(ord(char)) for char in txt_path])[:7])
     np.random.seed(seed=seed)
 
@@ -187,55 +185,49 @@ def map_emotions_3d(txt_path: str, filename: str, shape: tuple):
         ic1 = interpolate_color_list(colors1, STEPS)
         ic2 = interpolate_color_list(colors2, STEPS)
         ic_bg = interpolate_color_list(colors_bg, STEPS)
-        print(len(ic_bg))
-        print(len(ic1))
-        print(len(ic2))
 
         colors_len_dict = {len(ic2) : ic2, len(ic1) : ic1, len(ic_bg) : ic_bg}
         colors_len_dict = dict(sorted(colors_len_dict.items()))
 
         colors_keys = list(colors_len_dict.keys())
-        # print(colors_len_dict[colors_keys[0]])
 
         ic_bg = fit_colors_length(colors_len_dict[colors_keys[0]], colors_len_dict[colors_keys[2]])
         ic1 = fit_colors_length(colors_len_dict[colors_keys[1]], colors_len_dict[colors_keys[2]])
         ic2 = colors_len_dict[colors_keys[2]]
-
-        print(len(ic_bg))
-        print(len(ic1))
-        print(len(ic2))
         
         if len(ic_bg) % 2 != 0:
             ic_bg = ic_bg[:-1]
             ic1 = ic1[:-1]
             ic2 = ic2[:-1]
-
-        print(len(ic_bg))
-        print(len(ic1))
-        print(len(ic2))
         
         if len(ic1) < len(ic2):
             ic1 = fit_colors_length(ic1, ic2)
         else:
             ic2 = fit_colors_length(ic2, ic1)
+            
 
     with open(txt_path, 'r') as f:
         lines = f.readlines()
 
-
-        W, H = 512, 512
+        W, H = shape
         in_shape = (len(ic1), W, H)
         pic1 = np.zeros(in_shape)
         frequencies = [1, 2]
 
-
+        start = perf_counter()
+        
         for f in tqdm(frequencies, desc="Generating fractal noise"):   
             pic1 += generate_fractal_noise_3d(in_shape, (f, f, f))/len(frequencies)
+        
+        stop = perf_counter()
+        print(f"Generating fractal noise: {stop-start}s")
         
         pic2 = pic1.copy()
         new_pic1 = []
         new_pic2 = []
 
+        start = perf_counter()
+        
         for i, (c1, c2, c_bg, slice1, slice2) in tqdm(enumerate(zip(ic1, ic2, ic_bg, pic1, pic2)), desc="Generating vizualization", total=len(ic1)):
             emotions_dict = load_emotions_from_line(line)
 
@@ -273,7 +265,10 @@ def map_emotions_3d(txt_path: str, filename: str, shape: tuple):
             slice2 = np.stack((slice2,)*3, axis=-1) * color2
 
             new_pic1.append(slice1 + bg) 
-            new_pic2.append(slice2) 
+            new_pic2.append(slice2)
+        
+        stop = perf_counter()
+        print(f"Generating vizualization noise: {stop-start}s") 
 
         new_pic1 = np.array(new_pic1)
         new_pic2 = np.array(new_pic2)
@@ -289,7 +284,7 @@ if __name__ == "__main__":
     
     for path in paths:
         try:
-            print(f"Creating vizualization for {path.split('/')[-1]} for shape {shape}")
+            print(f"Creating vizualization for {Path(path).name} for shape {shape}")
             map_emotions_3d(txt_path=path, filename=str(shape[0]), shape=shape)
         except Exception as e:
             print("Ups: ", e)
