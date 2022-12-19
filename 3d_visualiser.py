@@ -14,7 +14,7 @@ from emotion_visualiser import load_emotions_from_line, COLORS
 from perlin import generate_fractal_noise_3d
 
 
-def get_paths(path_from: str, path_to: str, to_prefix: str = ""):
+def get_paths(path_from: str, path_to: str):
     Path(path_to).mkdir(parents=True, exist_ok=True)
     return [str(Path(os.path.join(path_from, file))) for file in os.listdir(path_from)]
     
@@ -59,7 +59,6 @@ def make_gif(path, filename: str):
 
 def save_gif(img, path, filename: str):
     name = Path(path).name[:-4]
-    print(name)
     save_path = os.path.join('data', 'gifs', name)
     os.makedirs(save_path, exist_ok=True)
     
@@ -288,7 +287,7 @@ def map_emotions_3d(txt_path: str, filename: str, shape: tuple, steps: int):
 
 if __name__ == "__main__":
     paths = get_paths(path_from="./data/emotions", path_to="./data/gifs")
-    shape = (32, 32)
+    shape = (128, 128)
     steps = 10
     
     total_start = perf_counter()

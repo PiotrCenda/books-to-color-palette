@@ -105,7 +105,7 @@ def generate_fractal_noise_3d(
     """
     noise = np.zeros(shape, dtype=np.float16)
     frequency = 1
-    amplitude = 1
+    amplitude = np.float16(1)
     
     for _ in range(octaves):
         noise += amplitude * generate_perlin_noise_3d(
